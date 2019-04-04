@@ -42,7 +42,7 @@ fmnist = keras.datasets.fashion_mnist
 train_img = train_img.reshape(60000, 28, 28, 1)/255.0
 test_img = test_img.reshape(10000, 28, 28, 1)/255.0
 
-conv_arr = [0,1,2] #[0,1,2,3,4,5,6,7]
+conv_arr = [0,1,2,3,4,5,6,7]
 
 time_acc = list()
 for conv_l1 in [2**i for i in conv_arr]:
@@ -69,7 +69,7 @@ for conv_l1 in [2**i for i in conv_arr]:
 
 		# Train
 		t1 = time.monotonic()
-		model.fit(train_img, train_lbl, epochs = 100, callbacks = [training_interrupt_callback])
+		model.fit(train_img, train_lbl, epochs = 30, callbacks = [training_interrupt_callback])
 		t2 = time.monotonic()
 		train_time = t2-t1
 		print("Training time: {}".format(train_time))
@@ -96,8 +96,8 @@ acc2 = metrics_plot.add_subplot(122, projection='3d')
 
 
 # generate X-Y grid for 3D Plot
-conv_l1 = np.array([2**i for i in conv_arr])
-conv_l2 = np.array([2**i for i in conv_arr])
+conv_l1 = conv_arr #np.array([2**i for i in conv_arr])
+conv_l2 = conv_arr #np.array([2**i for i in conv_arr])
 conv_l1, conv_l2 = np.meshgrid(conv_l1, conv_l2)
 
 # extract accuracy values
@@ -114,14 +114,20 @@ surf1 = acc1.plot_surface(conv_l1, conv_l2, acc, cmap=cm.coolwarm,
 surf2 = acc2.plot_surface(conv_l1, conv_l2, ttime, cmap=cm.viridis,
                        linewidth=0, antialiased=False)
 
-acc1.set_xticks(np.array([2**i for i in conv_arr]))
-acc1.set_yticks(np.array([2**i for i in conv_arr]))
+acc1.set_xticks(conv_arr)#np.array([2**i for i in conv_arr]))
+acc1.set_yticks(conv_arr)#np.array([2**i for i in conv_arr]))
+acc1.set_xticklabels(np.array([2**i for i in conv_arr]))
+acc1.set_yticklabels(np.array([2**i for i in conv_arr]))
+
 acc1.set_title("Accuracy vs Convolutions in each Layer")
 acc1.set_xlabel("Convs Layer 1")
 acc1.set_ylabel("Convs Layer 2")
 acc1.set_zlabel("Accuracy")
-acc2.set_xticks(np.array([2**i for i in conv_arr]))
-acc2.set_yticks(np.array([2**i for i in conv_arr]))
+
+acc2.set_xticks(conv_arr)#np.array([2**i for i in conv_arr]))
+acc2.set_yticks(conv_arr)#np.array([2**i for i in conv_arr]))
+acc2.set_xticklabels(np.array([2**i for i in conv_arr]))
+acc2.set_yticklabels(np.array([2**i for i in conv_arr]))
 acc2.set_title("Training Time vs Convolutions in each Layer")
 acc2.set_xlabel("Convs Layer 1")
 acc2.set_ylabel("Convs Layer 2")
@@ -132,4 +138,4 @@ metrics_plot.colorbar(surf1, shrink=0.5, aspect=5)
 metrics_plot.colorbar(surf2, shrink=0.5, aspect=5)
 
 # save figure
-metrics_plot.savefig("Accuracy_Time_vs_Convolutions.png")
+metrics_plot.savefig("Accuracy_Time_vs_Convolutions2.png")

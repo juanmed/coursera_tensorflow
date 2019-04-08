@@ -1,6 +1,6 @@
 # ex5 from Tensorflow flow from coursera
 
-import os 
+import os, signal
 import zipfile
 import matplotlib.pyplot as plt 
 import matplotlib.image as mpimg
@@ -22,11 +22,11 @@ class cnnCallback(keras.callbacks.Callback):
     # on epoch end
     def on_epoch_end(self, epoch, logs={}):
         """
-        Finish when training accuracy > 0.99
+        Finish when training accuracy > 0.998
         """ 
-        if(logs.get('acc') > 0.99):
+        if(logs.get('acc') > 0.998):
             print("\n +----------------------------------------------+ \n"+
-                  " |   Accuracy {:.3f} > 0.99. Finishing training  |".format(logs.get('acc'))+
+                  " |   Accuracy {:.3f} > 0.998. Finishing training  |".format(logs.get('acc'))+
                   "\n +----------------------------------------------+ \n")
             self.model.stop_training = True
 
@@ -38,19 +38,30 @@ zip_ref.extractall('horse_human_dataset/')
 zip_ref.close()
 """
 dataset_dir = 'horse_human_dataset/'
+train_dir = dataset_dir+'train/'
+val_dir = dataset_dir+'val/'
 
-train_horse_dir = os.path.join(dataset_dir+'horses/')
-train_human_dir = os.path.join(dataset_dir+'humans/')
+train_horse_dir = os.path.join(train_dir+'horses/')
+train_human_dir = os.path.join(train_dir+'humans/')
 
 # Create Dataset Generators and set parameters
 train_datagen = ImageDataGenerator(rescale= 1.0/255.0)
+validation_datagen = ImageDataGenerator(rescale = 1.0/255.0)
 
 # Flow train images in batch size = 128
 train_flow = train_datagen.flow_from_directory(
-                dataset_dir,   # source directory for train images
-                target_size=(300, 300),
+                train_dir,   # source directory for train images
+                target_size = (300, 300),
                 batch_size = 128,   
-                class_mode='binary')
+                class_mode = 'binary')
+
+val_flow = validation_datagen.flow_from_directory( 
+                val_dir,
+                target_size = (300, 300),
+                batch_size = 32,
+                class_mode = 'binary')
+# Try different convolutions size
+conv_arr = [0,1,2,3,4,5,6,7]
 
 # define neural network model
 model = keras.models.Sequential([
@@ -86,15 +97,23 @@ model.compile(loss = 'binary_crossentropy', optimizer = RMSprop(lr=0.001), metri
 
 # Train network... and measure training time
 t1 = time.time()
-history = model.fit_generator(train_flow, steps_per_epoch=8, epochs = 15, verbose=1, callbacks=[cnnCallback()])
+#history = model.fit_generator(train_flow, steps_per_epoch=8, epochs = 2, verbose=1, validation_data = val_flow, validation_steps=8, callbacks=[cnnCallback()])
+history = model.fit_generator(train_flow, steps_per_epoch=8, epochs = 2, verbose=1, callbacks=[cnnCallback()])
 t2 = time.time()
-print("Training time: {}".format(t2 - t1))
+train_time = t2 - t1
+#print("Training time: {}".format(train_time))
 
+
+# ******************************************************** #
+#      Test some images                                    #
+# ******************************************************** #
+
+"""
 # Load images for testing
-testset_dir = dataset_dir+'test/'
-for image_file in os.listdir(testset_dir):
+test_dir = dataset_dir+'test/'
+for image_file in os.listdir(test_dir):
 
-    img = load_img(testset_dir+image_file, target_size=(300,300))
+    img = load_img(test_dir+image_file, target_size=(300,300))
     x = img_to_array(img)
     x = np.expand_dims(x, axis = 0)
 
@@ -105,6 +124,7 @@ for image_file in os.listdir(testset_dir):
         print("Input image {} is: HUMAN with probability {}".format(image_file, classes[0][0]))
     else:
         print("Input image {} is: HORSE with probability {}".format(image_file, classes[0][0]))
+"""
 
 # ******************************************************** #
 #      Visualize output for each layer                     #
@@ -120,7 +140,11 @@ activation_model = models.Model(inputs = model.input, outputs = layer_outputs)
 # Let's prepare a random input image from the training set.
 horse_img_files = [os.path.join(train_horse_dir, horse_image) for horse_image in os.listdir(train_horse_dir)]
 human_img_files = [os.path.join(train_human_dir, human_img) for human_img in os.listdir(train_human_dir)]
-classes = [[random.choice(horse_img_files),random.choice(horse_img_files)],[random.choice(human_img_files), random.choice(human_img_files)]]
+
+
+no_images = 5
+
+classes = [horse_img_files[:no_images],human_img_files[:no_images]]
 
 
 fig1 = plt.figure(figsize=(20, 10))
@@ -133,12 +157,12 @@ print(classes)
 for class_image_paths in classes:   
 
     class_image_number = len(class_image_paths)
-    print(class_image_paths)
-    print("Number of paths {}".format(class_image_number))
+    #print(class_image_paths)
+    #print("Number of paths {}".format(class_image_number))
 
     # create array of plots to draw
     axarr = fig1.subplots(class_image_number,len(layer_outputs)+1)  # draw all layers + original image
-    print("axarr shape {}".format(axarr.shape))
+    #print("axarr shape {}".format(axarr.shape))
 
     for img_number, img_path in enumerate(class_image_paths):
 
@@ -152,10 +176,10 @@ for class_image_paths in classes:
         layers_output.append(x)
 
         for layer_number, output in enumerate(layers_output):
-            print("Output shape: {}".format(output.shape))
+            #print("Output shape: {}".format(output.shape))
             # verify if is convolutional 
             if( len(output.shape) == 4):
-                # draw image
+                # draw image of Conv 0
                 axarr[img_number,layer_number].imshow(output[0,:,:,0], cmap = 'viridis')
                 
             else: # or if dense layer
@@ -163,14 +187,17 @@ for class_image_paths in classes:
                 axarr[img_number, layer_number].plot(output[0])
 
             # set title
-            axarr[img_number,layer_number].set_title(layer_names[layer_number])
+            axarr[img_number,layer_number].set_title(layer_names[layer_number], fontsize='small')
+            axarr[img_number,layer_number].tick_params(which='both', bottom = False, left=False, labelbottom=False, labelleft=False)
 
-    fig1.savefig("Layer_Outputs_{}".format(img_path.split('/')[1]))
+    fig1.savefig("Layer_Outputs_{}".format(img_path.split('/')[1]), dpi=200)
 
-plt.show()
+#plt.show()
 
 
-
+# Kill process on exit
+print("\nKilling Process... bye!")
+os.kill(os.getpid(), signal.SIGKILL)
 
 
 
